@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router'
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useSession } from '@/auth/session'
 import { useProfile } from '@/hooks/useData'
 import { AppShell } from '@/components/layout/AppShell'
@@ -39,9 +39,12 @@ function PublicOnly({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+// Na prévia (arquivo único), a navegação fica em memória.
+const Router = import.meta.env.VITE_PREVIEW ? MemoryRouter : BrowserRouter
+
 export default function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/entrar" element={<PublicOnly><AuthPage /></PublicOnly>} />
@@ -58,6 +61,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
-    </BrowserRouter>
+    </Router>
   )
 }

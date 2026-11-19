@@ -23,7 +23,8 @@ const Ctx = createContext<SessionCtx | null>(null)
 export function SessionProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient()
   const [session, setSession] = useState<Session | null>(null)
-  const [demo, setDemo] = useState<DataSource | null>(null)
+  // na prévia, já abre no modo demonstração
+  const [demo, setDemo] = useState<DataSource | null>(() => (import.meta.env.VITE_PREVIEW ? createDemoSource() : null))
   const [ready, setReady] = useState(!supabase)
 
   useEffect(() => {

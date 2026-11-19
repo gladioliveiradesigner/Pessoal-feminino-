@@ -3,8 +3,15 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
+import { viteSingleFile } from 'vite-plugin-singlefile'
 
-export default defineConfig({
+// `vite build --mode prototype` gera um único HTML de demonstração (sem service worker), usado como prévia.
+export default defineConfig(({ mode }) => mode === 'prototype' ? {
+  plugins: [react(), tailwindcss(), viteSingleFile()],
+  define: { 'import.meta.env.VITE_PREVIEW': JSON.stringify('1') },
+  build: { outDir: 'dist-prototype', assetsInlineLimit: 100_000_000 },
+  resolve: { alias: { '@': path.resolve(import.meta.dirname, 'src') } },
+} : {
   plugins: [
     react(),
     tailwindcss(),

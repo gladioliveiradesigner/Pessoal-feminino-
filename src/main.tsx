@@ -2,7 +2,6 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
-import { registerSW } from 'virtual:pwa-register'
 import { SessionProvider } from '@/auth/session'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import App from './App'
@@ -15,7 +14,7 @@ const queryClient = new QueryClient({
   },
 })
 
-registerSW({ immediate: true })
+if (!import.meta.env.VITE_PREVIEW) import('virtual:pwa-register').then((m) => m.registerSW({ immediate: true }))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
