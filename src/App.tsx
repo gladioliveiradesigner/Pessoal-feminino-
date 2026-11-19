@@ -13,6 +13,7 @@ const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').th
 const AgendaPage = lazy(() => import('@/features/agenda/AgendaPage').then((m) => ({ default: m.AgendaPage })))
 const TasksPage = lazy(() => import('@/features/tasks/TasksPage').then((m) => ({ default: m.TasksPage })))
 const HabitsPage = lazy(() => import('@/features/habits/HabitsPage').then((m) => ({ default: m.HabitsPage })))
+const FinancePage = lazy(() => import('@/features/finance/FinancePage').then((m) => ({ default: m.FinancePage })))
 const ExplorePage = lazy(() => import('@/features/explore/ExplorePage').then((m) => ({ default: m.ExplorePage })))
 const ProfilePage = lazy(() => import('@/features/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })))
 
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="agenda" element={<AgendaPage />} />
             <Route path="tarefas" element={<TasksPage />} />
             <Route path="rotina" element={<HabitsPage />} />
+            <Route path="financas" element={<FinancePage />} />
             <Route path="explorar" element={<ExplorePage />} />
             <Route path="perfil" element={<ProfilePage />} />
           </Route>

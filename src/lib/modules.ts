@@ -24,7 +24,7 @@ export const MODULES: ModuleDef[] = [
   { id: 'agenda', label: 'Agenda', description: 'Compromissos, calendário e lembretes', icon: CalendarDays, path: '/agenda', phase: 1, available: true },
   { id: 'tasks', label: 'Tarefas', description: 'Pendências pessoais e profissionais', icon: CheckSquare, path: '/tarefas', phase: 1, available: true },
   { id: 'habits', label: 'Hábitos e rotinas', description: 'Constância com leveza, sem culpa', icon: Repeat, path: '/rotina', phase: 1, available: true },
-  { id: 'finance', label: 'Finanças', description: 'Receitas, despesas, orçamento e metas', icon: Wallet, phase: 2, available: false },
+  { id: 'finance', label: 'Finanças', description: 'Receitas, despesas, contas, orçamento e metas', icon: Wallet, path: '/financas', phase: 2, available: true },
   { id: 'goals', label: 'Metas e sonhos', description: 'Objetivos com etapas e progresso', icon: Target, phase: 2, available: false },
   { id: 'journal', label: 'Diário', description: 'Registros e anotações privadas', icon: NotebookPen, phase: 2, available: false },
   { id: 'home', label: 'Casa', description: 'Compras, tarefas e manutenção', icon: Home, phase: 2, available: false },

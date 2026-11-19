@@ -7,3 +7,4 @@ psql -v ON_ERROR_STOP=1 -q -c "drop database if exists lume_test" -c "create dat
 psql -v ON_ERROR_STOP=1 -q -d lume_test -f scripts/test-rls.sql
 for f in supabase/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -q -d lume_test -f "$f"; done
 psql -q -d lume_test -f scripts/test-rls-checks.sql
+psql -q -d lume_test -f scripts/test-rls-finance.sql

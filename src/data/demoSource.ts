@@ -16,6 +16,64 @@ const DEFAULTS: { [K in TableName]: Partial<Tables[K]> } = {
   habits: { icon: 'sparkles', color: 'sage', days_of_week: [0, 1, 2, 3, 4, 5, 6], target_per_day: 1, unit: null, period: 'anytime', archived_at: null, position: 0 },
   habit_logs: { count: 1 },
   mood_entries: { energy: null, note: null },
+  payment_methods: { kind: 'other', archived_at: null, position: 0 },
+  finance_categories: { color: 'graphite', position: 0 },
+  transactions: { status: 'paid', paid_at: null, category_id: null, payment_method_id: null, recurring_id: null, notes: null, source: 'manual' },
+  recurring_transactions: { category_id: null, payment_method_id: null, freq: 'monthly', interval_count: 1, end_date: null, active: true },
+  budgets: { category_id: null },
+  savings_goals: { saved_cents: 0, deadline: null, color: 'sage', achieved_at: null },
+}
+
+function seedFinance(today: Date) {
+  const fc = (name: string, kind: 'income' | 'expense', color: string, position: number) => ({ id: uid(), name, kind, color, position })
+  const finance_categories = [
+    fc('Salário', 'income', 'sage', 0), fc('Renda extra', 'income', 'mint', 1), fc('Outras receitas', 'income', 'sky', 2),
+    fc('Moradia', 'expense', 'lavender', 0), fc('Mercado', 'expense', 'sage', 1), fc('Transporte', 'expense', 'sky', 2),
+    fc('Saúde', 'expense', 'mint', 3), fc('Lazer', 'expense', 'rose', 4), fc('Beleza e cuidados', 'expense', 'rose', 5),
+    fc('Educação', 'expense', 'sand', 6), fc('Contas e assinaturas', 'expense', 'graphite', 7), fc('Outros', 'expense', 'graphite', 8),
+  ]
+  const pm = (name: string, kind: Tables['payment_methods']['kind'], position: number) => ({ id: uid(), name, kind, position, archived_at: null })
+  const payment_methods = [pm('Pix', 'pix', 0), pm('Cartão de débito', 'debit', 1), pm('Cartão de crédito', 'credit', 2), pm('Dinheiro', 'cash', 3)]
+  const cat = (n: string) => finance_categories.find((c) => c.name === n)!.id
+  const pay = (n: string) => payment_methods.find((p) => p.name === n)!.id
+  const month0 = new Date(today.getFullYear(), today.getMonth(), 1)
+  const dk = (m: number, d: number) => toDateKey(new Date(month0.getFullYear(), month0.getMonth() - m, d))
+  const recurring_transactions: Tables['recurring_transactions'][] = [
+    { ...(DEFAULTS.recurring_transactions as Tables['recurring_transactions']), id: uid(), kind: 'income', description: 'Salário', amount_cents: 650000, category_id: cat('Salário'), start_date: dk(5, 5) },
+    { ...(DEFAULTS.recurring_transactions as Tables['recurring_transactions']), id: uid(), kind: 'expense', description: 'Aluguel', amount_cents: 180000, category_id: cat('Moradia'), payment_method_id: pay('Pix'), start_date: dk(5, 10) },
+    { ...(DEFAULTS.recurring_transactions as Tables['recurring_transactions']), id: uid(), kind: 'expense', description: 'Internet', amount_cents: 11990, category_id: cat('Contas e assinaturas'), payment_method_id: pay('Cartão de crédito'), start_date: dk(5, 20) },
+  ]
+  const transactions: Tables['transactions'][] = []
+  const tx = (m: number, d: number, kind: 'income' | 'expense', description: string, cents: number, c: string, p?: string, extra: Partial<Tables['transactions']> = {}) =>
+    transactions.push({ ...(DEFAULTS.transactions as Tables['transactions']), id: uid(), kind, description, amount_cents: cents, occurred_on: dk(m, d), category_id: cat(c), payment_method_id: p ? pay(p) : null, ...extra })
+  for (let m = 5; m >= 1; m--) {
+    tx(m, 5, 'income', 'Salário', 650000, 'Salário', undefined, { recurring_id: recurring_transactions[0].id, source: 'recurring' })
+    tx(m, 10, 'expense', 'Aluguel', 180000, 'Moradia', 'Pix', { recurring_id: recurring_transactions[1].id, source: 'recurring' })
+    tx(m, 20, 'expense', 'Internet', 11990, 'Contas e assinaturas', 'Cartão de crédito', { recurring_id: recurring_transactions[2].id, source: 'recurring' })
+    tx(m, 8, 'expense', 'Mercado do mês', 85000 + m * 7300, 'Mercado', 'Cartão de débito')
+    tx(m, 15, 'expense', 'Combustível', 32000 - m * 1500, 'Transporte', 'Cartão de crédito')
+    tx(m, 22, 'expense', 'Jantar com amigas', 15000 + m * 4000, 'Lazer', 'Pix')
+    if (m % 2) tx(m, 18, 'income', 'Projeto freelance', 120000, 'Renda extra')
+  }
+  const day = today.getDate()
+  const cur = (d: number) => Math.min(d, 28)
+  if (day >= 5) tx(0, 5, 'income', 'Salário', 650000, 'Salário', undefined, { recurring_id: recurring_transactions[0].id, source: 'recurring' })
+  if (day >= 10) tx(0, 10, 'expense', 'Aluguel', 180000, 'Moradia', 'Pix', { recurring_id: recurring_transactions[1].id, source: 'recurring' })
+  tx(0, cur(Math.max(1, day - 3)), 'expense', 'Mercado', 42370, 'Mercado', 'Cartão de débito')
+  tx(0, cur(Math.max(1, day - 1)), 'expense', 'Farmácia', 8790, 'Saúde', 'Pix')
+  tx(0, cur(Math.max(1, day - 6)), 'expense', 'Manicure', 6000, 'Beleza e cuidados', 'Pix')
+  tx(0, cur(Math.min(28, day + 4)), 'expense', 'Fatura do cartão', 98000, 'Contas e assinaturas', undefined, { status: 'pending' })
+  const mk = toDateKey(month0)
+  const budgets: Tables['budgets'][] = [
+    { id: uid(), month: mk, category_id: null, amount_cents: 450000 },
+    { id: uid(), month: mk, category_id: cat('Mercado'), amount_cents: 110000 },
+    { id: uid(), month: mk, category_id: cat('Lazer'), amount_cents: 40000 },
+  ]
+  const savings_goals: Tables['savings_goals'][] = [
+    { ...(DEFAULTS.savings_goals as Tables['savings_goals']), id: uid(), name: 'Viagem para a praia', target_cents: 600000, saved_cents: 245000, deadline: dk(-6, 1), color: 'sky' },
+    { ...(DEFAULTS.savings_goals as Tables['savings_goals']), id: uid(), name: 'Reserva de emergência', target_cents: 2000000, saved_cents: 830000, color: 'sage' },
+  ]
+  return { finance_categories, payment_methods, recurring_transactions, transactions, budgets, savings_goals }
 }
 
 function seed() {
@@ -66,7 +124,7 @@ function seed() {
     })
   }
   habit_logs.push({ id: uid(), habit_id: habits[0].id, log_date: toDateKey(today), count: 3 })
-  return { categories: cats, events, tasks, habits, habit_logs, mood_entries: [] as Tables['mood_entries'][] }
+  return { categories: cats, events, tasks, habits, habit_logs, mood_entries: [] as Tables['mood_entries'][], ...seedFinance(today) }
 }
 
 export function createDemoSource(): DataSource {
@@ -78,7 +136,7 @@ export function createDemoSource(): DataSource {
     areas: ['agenda', 'tasks', 'habits'],
     theme: 'system',
     accent: 'rose',
-    enabled_modules: ['agenda', 'tasks', 'habits'],
+    enabled_modules: ['agenda', 'tasks', 'habits', 'finance'],
     dashboard_widgets: DEFAULT_WIDGETS,
     week_starts_on: 0,
     onboarded_at: new Date().toISOString(),
@@ -108,6 +166,25 @@ export function createDemoSource(): DataSource {
       if (table === 'tasks') rows.forEach((r) => r.parent_id === id && doomed.add(r.id))
       ;(db as Record<string, unknown[]>)[table] = rows.filter((r) => !doomed.has(r.id))
       if (table === 'habits') db.habit_logs = db.habit_logs.filter((l) => l.habit_id !== id)
+      if (table === 'finance_categories') {
+        db.budgets = db.budgets.filter((b) => b.category_id !== id)
+        db.transactions = db.transactions.map((t) => (t.category_id === id ? { ...t, category_id: null } : t))
+      }
+      if (table === 'payment_methods') db.transactions = db.transactions.map((t) => (t.payment_method_id === id ? { ...t, payment_method_id: null } : t))
+      if (table === 'recurring_transactions') db.transactions = db.transactions.map((t) => (t.recurring_id === id ? { ...t, recurring_id: null } : t))
+      if (table === 'categories') {
+        db.tasks = db.tasks.map((t) => (t.category_id === id ? { ...t, category_id: null } : t))
+        db.events = db.events.map((t) => (t.category_id === id ? { ...t, category_id: null } : t))
+      }
+      return delay(undefined)
+    },
+    async insertMany(table, rows) {
+      for (const r of rows) {
+        const tr = r as unknown as Tables['transactions']
+        const dup = table === 'transactions' && tr.recurring_id &&
+          db.transactions.some((t) => t.recurring_id === tr.recurring_id && t.occurred_on === tr.occurred_on)
+        if (!dup) (db[table] as unknown[]).push({ ...DEFAULTS[table], ...r, id: uid(), created_at: stamp(), updated_at: stamp() })
+      }
       return delay(undefined)
     },
     async upsert(table, row, onConflict) {

@@ -22,6 +22,16 @@
 | `habit_logs` | registro diário de cada hábito (único por hábito e dia) |
 | `mood_entries` | humor e energia do dia (dado sensível) |
 
+### Finanças (Fase 2)
+| Tabela | Conteúdo |
+| --- | --- |
+| `finance_categories` | categorias de receita e despesa (sugeridas no cadastro, editáveis) |
+| `payment_methods` | Pix, débito, crédito, dinheiro e outras, com arquivamento |
+| `transactions` | lançamentos em centavos; `status = pending` vira conta a pagar/receber; `source`/`external_id` preparados para importação bancária futura |
+| `recurring_transactions` | contas fixas; o app gera as ocorrências até o fim do próximo mês, sem duplicar (índice único) |
+| `budgets` | orçamento do mês, total (`category_id` nulo) ou por categoria |
+| `savings_goals` | metas de economia com valor guardado e prazo |
+
 Gatilho `assert_same_owner` impede referenciar categoria, tarefa-mãe ou hábito de outra pessoa.
 
 ## Privacidade e LGPD
@@ -35,5 +45,5 @@ Gatilho `assert_same_owner` impede referenciar categoria, tarefa-mãe ou hábito
 - Tarefas: ao concluir uma tarefa recorrente, a próxima é criada com a nova data (e as subtarefas são copiadas em aberto).
 
 ## Roadmap
-- **Fase 2:** Finanças, Metas, Diário, Casa, Treino e academia, Filhos, Pets.
+- **Fase 2:** ~~Finanças~~ (pronto), Metas, Diário, Casa, Treino e academia, Filhos, Pets.
 - **Fase 3:** Bem-estar (humor, sono, autocuidado), Ciclo menstrual, Remédios, Skin care, notificações push, offline avançado.

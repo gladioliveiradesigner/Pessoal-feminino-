@@ -5,7 +5,7 @@ export type ThemePref = 'light' | 'dark' | 'system'
 export type Accent = 'rose' | 'lavender' | 'sage' | 'graphite'
 
 export interface WidgetPref { id: WidgetId; visible: boolean }
-export type WidgetId = 'tasks' | 'events' | 'habits' | 'mood' | 'reminders'
+export type WidgetId = 'tasks' | 'events' | 'habits' | 'finance' | 'mood' | 'reminders'
 
 export interface Profile {
   id: string
@@ -89,6 +89,66 @@ export interface MoodEntry extends Owned {
   note: string | null
 }
 
+// ---------------- Finanças ----------------
+export type MoneyKind = 'income' | 'expense'
+export type PaymentKind = 'cash' | 'debit' | 'credit' | 'pix' | 'transfer' | 'other'
+
+export interface PaymentMethod extends Owned {
+  name: string
+  kind: PaymentKind
+  archived_at: string | null
+  position: number
+}
+
+export interface FinanceCategory extends Owned {
+  name: string
+  kind: MoneyKind
+  color: string
+  position: number
+}
+
+export interface Transaction extends Owned {
+  kind: MoneyKind
+  description: string
+  amount_cents: number
+  occurred_on: string
+  status: 'paid' | 'pending'
+  paid_at: string | null
+  category_id: string | null
+  payment_method_id: string | null
+  recurring_id: string | null
+  notes: string | null
+  source: 'manual' | 'recurring' | 'import'
+}
+
+export interface RecurringTransaction extends Owned {
+  kind: MoneyKind
+  description: string
+  amount_cents: number
+  category_id: string | null
+  payment_method_id: string | null
+  freq: RecurrenceFreq
+  interval_count: number
+  start_date: string
+  end_date: string | null
+  active: boolean
+}
+
+export interface Budget extends Owned {
+  month: string
+  category_id: string | null
+  amount_cents: number
+}
+
+export interface SavingsGoal extends Owned {
+  name: string
+  target_cents: number
+  saved_cents: number
+  deadline: string | null
+  color: string
+  achieved_at: string | null
+}
+
 /** Mapeamento tabela → tipo de linha. Novas tabelas (finanças, metas...) entram aqui. */
 export interface Tables {
   categories: Category
@@ -97,7 +157,18 @@ export interface Tables {
   habits: Habit
   habit_logs: HabitLog
   mood_entries: MoodEntry
+  payment_methods: PaymentMethod
+  finance_categories: FinanceCategory
+  transactions: Transaction
+  recurring_transactions: RecurringTransaction
+  budgets: Budget
+  savings_goals: SavingsGoal
 }
+
+export const ALL_TABLES: TableName[] = [
+  'categories', 'events', 'tasks', 'habits', 'habit_logs', 'mood_entries',
+  'payment_methods', 'finance_categories', 'transactions', 'recurring_transactions', 'budgets', 'savings_goals',
+]
 export type TableName = keyof Tables
 
 /**
@@ -111,6 +182,8 @@ export interface DataSource {
   insert<T extends TableName>(table: T, row: Partial<Tables[T]>): Promise<Tables[T]>
   update<T extends TableName>(table: T, id: string, patch: Partial<Tables[T]>): Promise<Tables[T]>
   remove(table: TableName, id: string): Promise<void>
+  /** Insere várias linhas de uma vez; conflitos de unicidade são ignorados. */
+  insertMany<T extends TableName>(table: T, rows: Partial<Tables[T]>[]): Promise<void>
   upsert<T extends TableName>(table: T, row: Partial<Tables[T]>, onConflict: string): Promise<Tables[T]>
   getProfile(): Promise<Profile | null>
   updateProfile(patch: Partial<Profile>): Promise<Profile>
@@ -122,6 +195,7 @@ export const DEFAULT_WIDGETS: WidgetPref[] = [
   { id: 'tasks', visible: true },
   { id: 'events', visible: true },
   { id: 'habits', visible: true },
+  { id: 'finance', visible: true },
   { id: 'mood', visible: true },
   { id: 'reminders', visible: true },
 ]

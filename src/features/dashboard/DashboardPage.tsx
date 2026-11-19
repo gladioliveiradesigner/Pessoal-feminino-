@@ -12,13 +12,14 @@ import { useEditors } from '@/features/shared/editors'
 import { TaskItem } from '@/features/tasks/TaskItem'
 import { HabitToday } from '@/features/habits/HabitToday'
 import { MoodPicker } from './MoodPicker'
+import { FinanceWidget } from './FinanceWidget'
 import { expandEvents, filterTasks, occurrencesOnDay, sortTasks, upcomingReminders, isScheduled } from '@/lib/domain'
 import { capitalize, fmt, friendlyDay, greeting, todayKey, toDateKey } from '@/lib/dates'
 import { firstName } from '@/lib/utils'
 import { DEFAULT_WIDGETS, type WidgetId, type WidgetPref } from '@/data/types'
 
 const WIDGET_LABEL: Record<WidgetId, string> = {
-  tasks: 'Tarefas de hoje', events: 'Compromissos de hoje', habits: 'Hábitos do dia', mood: 'Como você está', reminders: 'Lembretes',
+  tasks: 'Tarefas de hoje', events: 'Compromissos de hoje', habits: 'Hábitos do dia', finance: 'Finanças do mês', mood: 'Como você está', reminders: 'Lembretes',
 }
 const PHRASES = [
   'Que tal organizar seu dia?', 'Um passo de cada vez já é muito.', 'Seu ritmo é o ritmo certo.',
@@ -161,9 +162,9 @@ function RemindersWidget() {
 }
 
 const WIDGETS: Record<WidgetId, () => React.ReactElement> = {
-  tasks: TasksWidget, events: EventsWidget, habits: HabitsWidget, mood: MoodWidget, reminders: RemindersWidget,
+  tasks: TasksWidget, events: EventsWidget, habits: HabitsWidget, finance: FinanceWidget, mood: MoodWidget, reminders: RemindersWidget,
 }
-const WIDGET_MODULE: Partial<Record<WidgetId, string>> = { tasks: 'tasks', events: 'agenda', habits: 'habits' }
+const WIDGET_MODULE: Partial<Record<WidgetId, string>> = { tasks: 'tasks', events: 'agenda', habits: 'habits', finance: 'finance' }
 
 function Customize({ open, onOpenChange, widgets, enabled }: { open: boolean; onOpenChange: (o: boolean) => void; widgets: WidgetPref[]; enabled: string[] }) {
   const save = useUpdateProfile()
@@ -220,7 +221,7 @@ export function DashboardPage() {
         <EmptyState icon={<Sparkles />} title="Seu início está vazio" text="Escolha os cartões que quer ver aqui."
           action={<Button onClick={() => setCustomize(true)}>Personalizar</Button>} />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
           {visible.map((w) => { const W = WIDGETS[w.id]; return <W key={w.id} /> })}
         </div>
       )}

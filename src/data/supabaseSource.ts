@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { DataSource, Profile, TableName, Tables } from './types'
+import { ALL_TABLES, type DataSource, type Profile, type TableName, type Tables } from './types'
 
 const ORDER: Record<TableName, string> = {
   categories: 'position',
@@ -8,6 +8,12 @@ const ORDER: Record<TableName, string> = {
   habits: 'position',
   habit_logs: 'log_date',
   mood_entries: 'entry_date',
+  payment_methods: 'position',
+  finance_categories: 'position',
+  transactions: 'occurred_on',
+  recurring_transactions: 'start_date',
+  budgets: 'month',
+  savings_goals: 'created_at',
 }
 
 /** Mensagens amigáveis, sem expor detalhes (e sem registrar dados pessoais). */
@@ -45,6 +51,12 @@ export function createSupabaseSource(sb: SupabaseClient, userId: string): DataSo
       if (error) fail(error)
       return data as Tables[T]
     },
+    async insertMany(table, rows) {
+      // uma a uma: conflito (23505) = ocorrência já criada em outra aba/dispositivo, ignorar só ela
+      const results = await Promise.all(rows.map((r) => sb.from(table).insert(r as never)))
+      const err = results.find((r) => r.error && r.error.code !== '23505')?.error
+      if (err) fail(err)
+    },
     async getProfile() {
       const { data, error } = await sb.from('profiles').select('*').eq('id', userId).maybeSingle()
       if (error) fail(error)
@@ -56,9 +68,8 @@ export function createSupabaseSource(sb: SupabaseClient, userId: string): DataSo
       return data as Profile
     },
     async exportAll() {
-      const tables: TableName[] = ['categories', 'events', 'tasks', 'habits', 'habit_logs', 'mood_entries']
       const out: Record<string, unknown> = { exported_at: new Date().toISOString(), profile: await this.getProfile() }
-      for (const t of tables) out[t] = await this.list(t)
+      for (const t of ALL_TABLES) out[t] = await this.list(t)
       return out
     },
     async deleteAccount() {
