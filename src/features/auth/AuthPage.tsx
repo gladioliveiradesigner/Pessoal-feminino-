@@ -49,12 +49,12 @@ export function AuthPage() {
       } else if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
           email: v.email, password: v.password!,
-          options: { data: { display_name: v.name?.trim() ?? '' }, emailRedirectTo: window.location.origin },
+          options: { data: { display_name: v.name?.trim() ?? '' }, emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}` },
         })
         if (error) throw error
         if (!data.session) setSent('Enviamos um link de confirmação para o seu e-mail. Depois de confirmar, é só entrar.')
       } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(v.email, { redirectTo: `${window.location.origin}/perfil?nova-senha=1` })
+        const { error } = await supabase.auth.resetPasswordForEmail(v.email, { redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}perfil?nova-senha=1` })
         if (error) throw error
         setSent('Se esse e-mail tiver cadastro, você vai receber um link para criar uma nova senha.')
       }

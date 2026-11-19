@@ -44,7 +44,7 @@ const Router = import.meta.env.VITE_PREVIEW ? MemoryRouter : BrowserRouter
 
 export default function App() {
   return (
-    <Router>
+    <Router basename={import.meta.env.VITE_PREVIEW ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '') || undefined}>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/entrar" element={<PublicOnly><AuthPage /></PublicOnly>} />

@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => mode === 'prototype' ? {
   build: { outDir: 'dist-prototype', assetsInlineLimit: 100_000_000 },
   resolve: { alias: { '@': path.resolve(import.meta.dirname, 'src') } },
 } : {
+  // em subpasta (GitHub Pages) o build recebe BASE_PATH, ex.: /Pessoal-feminino-/
+  base: process.env.BASE_PATH ?? '/',
   plugins: [
     react(),
     tailwindcss(),
@@ -23,21 +25,21 @@ export default defineConfig(({ mode }) => mode === 'prototype' ? {
         short_name: 'Lume',
         description: 'Seu espaço pessoal para organizar rotina, agenda, tarefas e hábitos.',
         lang: 'pt-BR',
-        start_url: '/',
-        scope: '/',
+        start_url: process.env.BASE_PATH ?? '/',
+        scope: process.env.BASE_PATH ?? '/',
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#FAF7F2',
         theme_color: '#FAF7F2',
         icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        navigateFallback: '/index.html',
+        navigateFallback: `${process.env.BASE_PATH ?? '/'}index.html`,
         // Dados pessoais NUNCA são guardados no cache do service worker.
         runtimeCaching: [],
       },
