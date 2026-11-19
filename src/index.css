@@ -1,0 +1,96 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/manrope';
+@import '@fontsource-variable/fraunces';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #faf7f2;
+  --foreground: #33313a;
+  --card: #ffffff;
+  --muted: #f2ede6;
+  --muted-foreground: #6f6a76;
+  --border: #ebe4da;
+  --input: #e4dccf;
+  --primary: #c78894;           /* rosa antigo um pouco mais denso para contraste */
+  --primary-soft: #d9a6af;
+  --primary-foreground: #ffffff;
+  --danger: #b4534f;
+  --ring: #b9aedc;
+  --shadow: 0 1px 2px rgb(51 49 58 / 0.04), 0 4px 16px rgb(51 49 58 / 0.05);
+}
+:root[data-accent='lavender'] { --primary: #8f80c4; --primary-soft: #b9aedc; --ring: #d9a6af; }
+:root[data-accent='sage'] { --primary: #6f8f6f; --primary-soft: #a8bda8; --ring: #b9aedc; }
+:root[data-accent='graphite'] { --primary: #33313a; --primary-soft: #6e6a78; --ring: #b9aedc; }
+
+.dark {
+  --background: #1d1c21;
+  --foreground: #f1ede8;
+  --card: #26252b;
+  --muted: #2e2d34;
+  --muted-foreground: #a8a3ae;
+  --border: #37353d;
+  --input: #403e47;
+  --primary: #d9a6af;
+  --primary-soft: #d9a6af;
+  --primary-foreground: #1d1c21;
+  --danger: #e58c87;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+.dark[data-accent='lavender'] { --primary: #b9aedc; --primary-soft: #b9aedc; }
+.dark[data-accent='sage'] { --primary: #a8bda8; --primary-soft: #a8bda8; }
+.dark[data-accent='graphite'] { --primary: #e6e2ea; --primary-soft: #a8a3ae; }
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-danger: var(--danger);
+  --color-ring: var(--ring);
+  --color-rose: #d9a6af;
+  --color-lavender: #b9aedc;
+  --color-sage: #a8bda8;
+  --color-cream: #faf7f2;
+  --color-graphite: #33313a;
+  --font-sans: 'Manrope Variable', system-ui, sans-serif;
+  --font-serif: 'Fraunces Variable', Georgia, serif;
+  --shadow-soft: var(--shadow);
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+}
+
+@layer base {
+  * { border-color: var(--border); }
+  html { -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 0.5rem; }
+  ::selection { background: color-mix(in srgb, var(--primary-soft) 40%, transparent); }
+}
+
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.pt-safe { padding-top: env(safe-area-inset-top); }
+
+@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.animate-pop { animation: pop 280ms ease-out; }
+@keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.animate-fade-up { animation: fade-up 260ms ease-out both; }
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes zoom-in { from { opacity: 0; transform: translate(-50%, -48%) scale(.97); } to { opacity: 1; transform: translate(-50%, -50%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
