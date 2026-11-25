@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { addDays, startOfDay } from 'date-fns'
-import { Bell, CalendarDays, CheckSquare, ChevronDown, ChevronUp, MapPin, Plus, Repeat, Settings2, Smile, Sparkles } from 'lucide-react'
+import { Bell, CalendarDays, CheckSquare, ChevronDown, ChevronUp, Dumbbell, MapPin, Play, Plus, Repeat, Salad, Settings2, Smile, Sparkles, Check } from 'lucide-react'
 import { Card, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/field'
@@ -13,13 +13,17 @@ import { TaskItem } from '@/features/tasks/TaskItem'
 import { HabitToday } from '@/features/habits/HabitToday'
 import { MoodPicker } from './MoodPicker'
 import { FinanceWidget } from './FinanceWidget'
-import { expandEvents, filterTasks, occurrencesOnDay, sortTasks, upcomingReminders, isScheduled } from '@/lib/domain'
+import { expandEvents, filterTasks, occurrencesOnDay, sortTasks, upcomingReminders, isScheduled, isPeriodic, periodDone, countOn, logIndex } from '@/lib/domain'
+import { plansForDay, sessionFromPlan, sessionsOn } from '@/lib/workout'
+import { dayTimeline } from '@/lib/food'
+import { WeekDots } from '@/features/workout/WeekDots'
+import { MealRow } from '@/features/food/MealRow'
 import { capitalize, fmt, friendlyDay, greeting, todayKey, toDateKey } from '@/lib/dates'
 import { firstName } from '@/lib/utils'
 import { DEFAULT_WIDGETS, type WidgetId, type WidgetPref } from '@/data/types'
 
 const WIDGET_LABEL: Record<WidgetId, string> = {
-  tasks: 'Tarefas de hoje', events: 'Compromissos de hoje', habits: 'Hábitos do dia', finance: 'Finanças do mês', mood: 'Como você está', reminders: 'Lembretes',
+  tasks: 'Tarefas de hoje', events: 'Compromissos de hoje', habits: 'Hábitos do dia', finance: 'Finanças do mês', workout: 'Treino', food: 'Alimentação', mood: 'Como você está', reminders: 'Lembretes',
 }
 const PHRASES = [
   'Que tal organizar seu dia?', 'Um passo de cada vez já é muito.', 'Seu ritmo é o ritmo certo.',
@@ -102,13 +106,68 @@ function EventsWidget() {
 
 function HabitsWidget() {
   const { data: habits, isLoading } = useTable('habits')
-  const list = (habits ?? []).filter((h) => !h.archived_at && isScheduled(h, new Date()))
+  const { data: logs = [] } = useTable('habit_logs')
+  const { data: profile } = useProfile()
+  const idx = logIndex(logs)
+  const now = new Date()
+  // semanais/mensais aparecem enquanto a meta do período não foi cumprida (ou se foram feitos hoje)
+  const list = (habits ?? []).filter((h) => !h.archived_at && isScheduled(h, now) &&
+    (!isPeriodic(h) || !periodDone(h, idx, now, profile?.week_starts_on ?? 0) || countOn(idx, h.id, todayKey()) > 0))
   return (
     <Card>
       <CardHeader title="Hábitos do dia" icon={<Repeat />} action={<Link to="/rotina" className="text-sm font-medium text-primary hover:underline">Rotina</Link>} />
       {isLoading ? <Skeleton className="h-16" /> : list.length === 0 ? (
         <p className="py-2 text-sm text-muted-foreground">Nenhum hábito para hoje. <Link to="/rotina" className="text-primary hover:underline">Criar um hábito</Link></p>
       ) : <HabitToday habits={list} compact />}
+    </Card>
+  )
+}
+
+function WorkoutWidget() {
+  const { data: plans = [], isLoading } = useTable('workout_plans')
+  const { data: sessions = [] } = useTable('workout_sessions')
+  const { openWorkout } = useEditors()
+  const done = sessionsOn(sessions, todayKey())
+  const todays = plansForDay(plans, new Date()).filter((p) => !done.some((s) => s.plan_id === p.id))
+  return (
+    <Card>
+      <CardHeader title="Treino" icon={<Dumbbell />} action={<Link to="/treinos" className="text-sm font-medium text-primary hover:underline">Treinos</Link>} />
+      {isLoading ? <Skeleton className="h-16" /> : (
+        <>
+          <WeekDots sessions={sessions} />
+          <div className="mt-3 space-y-2">
+            {done.map((s) => <p key={s.id} className="flex items-center gap-2 text-sm"><Check className="size-4 text-primary" strokeWidth={3} /><b className="font-semibold">{s.name}</b> feito hoje</p>)}
+            {todays.map((p) => (
+              <div key={p.id} className="flex items-center justify-between gap-3">
+                <span className="truncate text-[15px]">{p.name}</span>
+                <Button size="sm" onClick={() => openWorkout(null, sessionFromPlan(p, todayKey()))}><Play />Começar</Button>
+              </div>
+            ))}
+            {!done.length && !todays.length && (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">{plans.length ? 'Dia livre de treino.' : 'Monte sua ficha em Treinos.'}</p>
+                <Button variant="outline" size="sm" onClick={() => openWorkout(null)}><Plus />Registrar</Button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </Card>
+  )
+}
+
+function FoodWidget() {
+  const { data: meals = [], isLoading } = useTable('meals')
+  const { data: logs = [] } = useTable('meal_logs')
+  const now = new Date()
+  const t = dayTimeline(meals, logs, now, todayKey())
+  const logged = t.planned.filter((p) => p.log).length
+  return (
+    <Card>
+      <CardHeader title="Alimentação" icon={<Salad />} action={<Link to="/alimentacao" className="text-sm font-medium text-primary hover:underline">{t.planned.length ? `${logged}/${t.planned.length}` : 'Abrir'}</Link>} />
+      {isLoading ? <Skeleton className="h-16" /> : t.planned.length === 0 ? (
+        <p className="py-2 text-sm text-muted-foreground">Sem plano de refeições. <Link to="/alimentacao" className="text-primary hover:underline">Montar meu plano</Link></p>
+      ) : <ul className="-mx-2">{t.planned.map(({ meal, log }) => <MealRow key={meal.id} meal={meal} log={log} dateKey={todayKey()} compact />)}</ul>}
     </Card>
   )
 }
@@ -162,9 +221,9 @@ function RemindersWidget() {
 }
 
 const WIDGETS: Record<WidgetId, () => React.ReactElement> = {
-  tasks: TasksWidget, events: EventsWidget, habits: HabitsWidget, finance: FinanceWidget, mood: MoodWidget, reminders: RemindersWidget,
+  tasks: TasksWidget, events: EventsWidget, habits: HabitsWidget, finance: FinanceWidget, workout: WorkoutWidget, food: FoodWidget, mood: MoodWidget, reminders: RemindersWidget,
 }
-const WIDGET_MODULE: Partial<Record<WidgetId, string>> = { tasks: 'tasks', events: 'agenda', habits: 'habits', finance: 'finance' }
+const WIDGET_MODULE: Partial<Record<WidgetId, string>> = { tasks: 'tasks', events: 'agenda', habits: 'habits', finance: 'finance', workout: 'workout', food: 'food' }
 
 function Customize({ open, onOpenChange, widgets, enabled }: { open: boolean; onOpenChange: (o: boolean) => void; widgets: WidgetPref[]; enabled: string[] }) {
   const save = useUpdateProfile()

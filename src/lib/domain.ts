@@ -1,4 +1,4 @@
-import { addDays, addMinutes, differenceInMinutes, parseISO, startOfDay, subDays } from 'date-fns'
+import { addDays, addMinutes, addMonths, addWeeks, differenceInMinutes, parseISO, startOfDay, startOfMonth, startOfWeek, subDays } from 'date-fns'
 import type { EventRow, Habit, HabitLog, Task } from '@/data/types'
 import { fromDateKey, toDateKey, todayKey } from './dates'
 import { addStep, occurrencesBetween } from './recurrence'
@@ -97,8 +97,53 @@ export function upcomingReminders(occ: Occurrence[], now = new Date(), hours = 4
 // ---------------- Hábitos ----------------
 export const PERIOD_LABEL = { morning: 'Manhã', afternoon: 'Tarde', evening: 'Noite', anytime: 'Ao longo do dia' } as const
 
+export type WeekStart = 0 | 1
+
+export function isPeriodic(h: Pick<Habit, 'frequency'>) {
+  return h.frequency === 'weekly' || h.frequency === 'monthly'
+}
+
+/** Hábitos diários seguem os dias da semana; semanais e mensais podem ser feitos em qualquer dia. */
 export function isScheduled(h: Habit, day: Date) {
+  if (isPeriodic(h)) return true
   return h.days_of_week.includes(day.getDay())
+}
+
+/** Meta do dia: hábitos semanais/mensais contam um registro por dia. */
+export function dailyTarget(h: Habit) {
+  return isPeriodic(h) ? 1 : h.target_per_day
+}
+
+/** Início (inclusivo) e fim (exclusivo) da semana ou do mês que contém `day`. */
+export function periodBounds(h: Pick<Habit, 'frequency'>, day: Date, weekStartsOn: WeekStart = 0): [Date, Date] {
+  if (h.frequency === 'monthly') { const s = startOfMonth(day); return [s, addMonths(s, 1)] }
+  const s = startOfWeek(startOfDay(day), { weekStartsOn }); return [s, addWeeks(s, 1)]
+}
+
+/** Quantos dias do período (semana/mês) têm registro. */
+export function periodCount(h: Habit, idx: Map<string, number>, day = new Date(), weekStartsOn: WeekStart = 0) {
+  const [s, e] = periodBounds(h, day, weekStartsOn)
+  let n = 0
+  for (let d = s; d < e; d = addDays(d, 1)) if (countOn(idx, h.id, toDateKey(d)) > 0) n++
+  return n
+}
+
+export function periodDone(h: Habit, idx: Map<string, number>, day = new Date(), weekStartsOn: WeekStart = 0) {
+  return periodCount(h, idx, day, weekStartsOn) >= h.target_per_period
+}
+
+export function frequencyLabel(h: Habit) {
+  const n = h.target_per_period
+  if (h.frequency === 'weekly') return n === 1 ? '1 vez por semana' : `${n} vezes por semana`
+  if (h.frequency === 'monthly') return n === 1 ? '1 vez por mês' : `${n} vezes por mês`
+  return h.days_of_week.length === 7 ? 'Todos os dias' : h.days_of_week.map((d) => ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][d]).join(', ')
+}
+
+/** Unidade da sequência: dias, semanas ou meses. */
+export function streakUnit(h: Habit, n: number) {
+  if (h.frequency === 'weekly') return n === 1 ? 'semana' : 'semanas'
+  if (h.frequency === 'monthly') return n === 1 ? 'mês' : 'meses'
+  return n === 1 ? 'dia' : 'dias'
 }
 
 export function logIndex(logs: HabitLog[]) {
@@ -111,11 +156,35 @@ export function countOn(idx: Map<string, number>, habitId: string, dateKey: stri
   return idx.get(`${habitId}:${dateKey}`) ?? 0
 }
 
+const createdOf = (h: Habit) => (h.created_at ? startOfDay(parseISO(h.created_at)) : null)
+const prevPeriod = (h: Habit, start: Date) => (h.frequency === 'monthly' ? addMonths(start, -1) : addWeeks(start, -1))
+
+/** Períodos (semana/mês) do atual para trás. */
+function periodsBack(h: Habit, today: Date, ws: WeekStart, max: number) {
+  const out: Date[] = []
+  let s = periodBounds(h, today, ws)[0]
+  for (let i = 0; i < max; i++) { out.push(s); s = prevPeriod(h, s) }
+  return out
+}
+
 /**
- * Sequência atual: dias programados consecutivos concluídos.
- * Hoje só conta se já foi concluído — não "quebra" a sequência enquanto o dia não acabou.
+ * Sequência atual. Diários: dias programados consecutivos concluídos.
+ * Semanais/mensais: semanas/meses seguidos com a meta atingida.
+ * O período atual só conta se já foi concluído — não "quebra" a sequência enquanto não acabou.
  */
-export function currentStreak(h: Habit, idx: Map<string, number>, today = new Date()) {
+export function currentStreak(h: Habit, idx: Map<string, number>, today = new Date(), weekStartsOn: WeekStart = 0) {
+  if (isPeriodic(h)) {
+    let streak = 0
+    const created = createdOf(h)
+    for (const [i, s] of periodsBack(h, today, weekStartsOn, 120).entries()) {
+      const done = periodDone(h, idx, s, weekStartsOn)
+      if (i === 0 && !done) continue
+      if (!done) break
+      streak++
+      if (created && s <= created) break
+    }
+    return streak
+  }
   let streak = 0
   let d = startOfDay(today)
   if (isScheduled(h, d) && countOn(idx, h.id, toDateKey(d)) < h.target_per_day) d = subDays(d, 1)
@@ -129,7 +198,15 @@ export function currentStreak(h: Habit, idx: Map<string, number>, today = new Da
   return streak
 }
 
-export function bestStreak(h: Habit, idx: Map<string, number>, days = 365, today = new Date()) {
+export function bestStreak(h: Habit, idx: Map<string, number>, days = 365, today = new Date(), weekStartsOn: WeekStart = 0) {
+  if (isPeriodic(h)) {
+    const n = h.frequency === 'monthly' ? Math.ceil(days / 30) : Math.ceil(days / 7)
+    let best = 0, cur = 0
+    for (const s of periodsBack(h, today, weekStartsOn, n).reverse()) {
+      if (periodDone(h, idx, s, weekStartsOn)) { cur++; best = Math.max(best, cur) } else if (s.getTime() !== periodBounds(h, today, weekStartsOn)[0].getTime()) cur = 0
+    }
+    return best
+  }
   let best = 0, cur = 0
   const created = h.created_at ? startOfDay(parseISO(h.created_at)) : subDays(today, days)
   for (let i = days; i >= 0; i--) {
@@ -141,10 +218,28 @@ export function bestStreak(h: Habit, idx: Map<string, number>, days = 365, today
   return best
 }
 
-/** Percentual de conclusão nos últimos `days` dias programados (excluindo hoje se ainda pendente). */
-export function completionRate(h: Habit, idx: Map<string, number>, days = 30, today = new Date()) {
+/** Janela usada no percentual: 30 dias, 8 semanas ou 6 meses. */
+export function rateWindowLabel(h: Habit) {
+  return h.frequency === 'weekly' ? '8 semanas' : h.frequency === 'monthly' ? '6 meses' : '30 dias'
+}
+
+/** Percentual de conclusão na janela (excluindo o dia/período atual se ainda pendente). */
+export function completionRate(h: Habit, idx: Map<string, number>, days = 30, today = new Date(), weekStartsOn: WeekStart = 0) {
+  if (isPeriodic(h)) {
+    const created = createdOf(h)
+    let total = 0, done = 0
+    for (const [i, s] of periodsBack(h, today, weekStartsOn, h.frequency === 'monthly' ? 6 : 8).entries()) {
+      const end = periodBounds(h, s, weekStartsOn)[1]
+      if (created && end <= created) continue
+      const ok = periodDone(h, idx, s, weekStartsOn)
+      if (i === 0 && !ok) continue
+      total++
+      if (ok) done++
+    }
+    return total ? Math.round((done / total) * 100) : 0
+  }
   let scheduled = 0, done = 0
-  const created = h.created_at ? startOfDay(parseISO(h.created_at)) : null
+  const created = createdOf(h)
   for (let i = 0; i < days; i++) {
     const d = subDays(startOfDay(today), i)
     if (!isScheduled(h, d) || (created && d < created)) continue
@@ -157,9 +252,11 @@ export function completionRate(h: Habit, idx: Map<string, number>, days = 30, to
 }
 
 /** Mensagens gentis, nunca de culpa. */
-export function encouragement(rate: number, streak: number) {
-  if (streak >= 7) return `${streak} dias seguidos. Que constância bonita!`
-  if (streak >= 2) return `${streak} dias seguidos. Continue no seu ritmo.`
+export function encouragement(rate: number, streak: number, unit: 'dias' | 'semanas' | 'meses' = 'dias') {
+  const strong = unit === 'dias' ? 7 : unit === 'semanas' ? 4 : 3
+  const seg = unit === 'semanas' ? 'seguidas' : 'seguidos'
+  if (streak >= strong) return `${streak} ${unit} ${seg}. Que constância bonita!`
+  if (streak >= 2) return `${streak} ${unit} ${seg}. Continue no seu ritmo.`
   if (rate >= 60) return 'Você tem cuidado bem desse hábito.'
   if (rate > 0) return 'Cada dia conta. Recomeçar também é progresso.'
   return 'Um pequeno passo hoje já é um começo.'

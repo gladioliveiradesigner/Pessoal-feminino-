@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { addMonths, eachDayOfInterval, endOfMonth, format, isAfter, isSameMonth, startOfDay, startOfMonth, startOfWeek, endOfWeek, subMonths } from 'date-fns'
-import { ChevronLeft, ChevronRight, Flame, Plus, Repeat, Sun, Sunset, Moon, Clock3, Archive } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Flame, Plus, Repeat, Sun, Sunset, Moon, Clock3, Archive, CalendarRange, CalendarDays } from 'lucide-react'
 import { Card, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyState, ErrorState, PageHeader, PageLoader, Segmented } from '@/components/ui/misc'
 import { useTable } from '@/hooks/useData'
 import { useEditors } from '@/features/shared/editors'
-import { completionRate, currentStreak, bestStreak, encouragement, isScheduled, PERIOD_LABEL, countOn } from '@/lib/domain'
+import { completionRate, currentStreak, bestStreak, encouragement, isScheduled, PERIOD_LABEL, countOn, dailyTarget, frequencyLabel, isPeriodic, periodDone, rateWindowLabel, streakUnit } from '@/lib/domain'
 import { capitalize, fmt, toDateKey, todayKey, WEEKDAYS_MIN } from '@/lib/dates'
 import { colorOf } from '@/lib/colors'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,7 @@ const PERIODS: DayPeriod[] = ['morning', 'afternoon', 'evening', 'anytime']
 
 function HabitCalendar({ habit }: { habit: Habit }) {
   const { idx, setCount } = useHabitLog()
+  const target = dailyTarget(habit)
   const [month, setMonth] = useState(startOfMonth(new Date()))
   const days = eachDayOfInterval({ start: startOfWeek(month), end: endOfWeek(endOfMonth(month)) })
   const color = colorOf(habit.color).hex
@@ -35,13 +36,13 @@ function HabitCalendar({ habit }: { habit: Habit }) {
         {days.map((d) => {
           const k = toDateKey(d)
           const c = countOn(idx, habit.id, k)
-          const done = c >= habit.target_per_day
+          const done = c >= target
           const partial = c > 0 && !done
           const future = isAfter(d, today)
           const sched = isScheduled(habit, d)
           return (
             <button key={k} disabled={future || !isSameMonth(d, month)}
-              onClick={() => setCount(habit, k, done ? 0 : habit.target_per_day)}
+              onClick={() => setCount(habit, k, done ? 0 : target)}
               aria-label={`${fmt(d, "d 'de' MMMM")}: ${done ? 'concluído' : partial ? 'parcial' : 'não registrado'}`}
               className={cn('aspect-square rounded-lg text-xs tabular-nums transition', !isSameMonth(d, month) && 'invisible',
                 !done && !partial && (sched ? 'bg-muted/70' : 'bg-transparent text-muted-foreground/50'), future && 'opacity-40',
@@ -58,22 +59,24 @@ function HabitCalendar({ habit }: { habit: Habit }) {
 }
 
 function HabitStats({ habit }: { habit: Habit }) {
-  const { idx } = useHabitLog()
+  const { idx, ws } = useHabitLog()
   const { openHabit } = useEditors()
-  const streak = currentStreak(habit, idx)
-  const best = bestStreak(habit, idx)
-  const rate = completionRate(habit, idx)
+  const streak = currentStreak(habit, idx, new Date(), ws)
+  const best = bestStreak(habit, idx, 365, new Date(), ws)
+  const rate = completionRate(habit, idx, 30, new Date(), ws)
+  const unit = streakUnit(habit, 2) as 'dias' | 'semanas' | 'meses'
   const color = colorOf(habit.color).hex
   return (
     <Card className="p-4">
       <HabitRow habit={habit} dateKey={todayKey()} onOpen={() => openHabit(habit)}
-        extra={<span className="text-xs text-muted-foreground">{habit.days_of_week.length === 7 ? 'Todos os dias' : habit.days_of_week.map((d) => ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][d]).join(', ')}</span>} />
+        extra={<span className="text-xs text-muted-foreground">{frequencyLabel(habit)}</span>} />
+      {isPeriodic(habit) && <p className="mt-1 pl-2 text-xs text-muted-foreground">{frequencyLabel(habit)}</p>}
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-xl bg-muted/60 p-2"><p className="flex items-center justify-center gap-1 text-lg font-semibold"><Flame className="size-4" style={{ color }} />{streak}</p><p className="text-[11px] text-muted-foreground">sequência</p></div>
+        <div className="rounded-xl bg-muted/60 p-2"><p className="flex items-center justify-center gap-1 text-lg font-semibold"><Flame className="size-4" style={{ color }} />{streak}</p><p className="text-[11px] text-muted-foreground">{streakUnit(habit, streak)} seguid{habit.frequency === 'weekly' ? (streak === 1 ? 'a' : 'as') : (streak === 1 ? 'o' : 'os')}</p></div>
         <div className="rounded-xl bg-muted/60 p-2"><p className="text-lg font-semibold">{best}</p><p className="text-[11px] text-muted-foreground">melhor</p></div>
-        <div className="rounded-xl bg-muted/60 p-2"><p className="text-lg font-semibold">{rate}%</p><p className="text-[11px] text-muted-foreground">30 dias</p></div>
+        <div className="rounded-xl bg-muted/60 p-2"><p className="text-lg font-semibold">{rate}%</p><p className="text-[11px] text-muted-foreground">{rateWindowLabel(habit)}</p></div>
       </div>
-      <p className="mt-3 text-sm text-muted-foreground">{encouragement(rate, streak)}</p>
+      <p className="mt-3 text-sm text-muted-foreground">{encouragement(rate, streak, unit)}</p>
       <details className="group mt-3">
         <summary className="cursor-pointer list-none text-sm font-medium text-primary">Ver calendário</summary>
         <div className="mt-3"><HabitCalendar habit={habit} /></div>
@@ -85,23 +88,30 @@ function HabitStats({ habit }: { habit: Habit }) {
 export function HabitsPage() {
   const { data: habits, isLoading, isError, refetch } = useTable('habits')
   const { openHabit } = useEditors()
-  const { idx } = useHabitLog()
+  const { idx, ws } = useHabitLog()
   const [view, setView] = useState<'today' | 'all'>('today')
   const active = useMemo(() => (habits ?? []).filter((h) => !h.archived_at), [habits])
   const archived = (habits ?? []).filter((h) => h.archived_at)
   const now = new Date()
-  const todays = active.filter((h) => isScheduled(h, now))
+  const todays = active.filter((h) => !isPeriodic(h) && isScheduled(h, now))
+  const weekly = active.filter((h) => h.frequency === 'weekly')
+  const monthly = active.filter((h) => h.frequency === 'monthly')
   const doneCount = todays.filter((h) => countOn(idx, h.id, todayKey()) >= h.target_per_day).length
+  const subtitle = [
+    todays.length ? `${doneCount} de ${todays.length} de hoje` : '',
+    weekly.length ? `${weekly.filter((h) => periodDone(h, idx, now, ws)).length} de ${weekly.length} da semana` : '',
+    monthly.length ? `${monthly.filter((h) => periodDone(h, idx, now, ws)).length} de ${monthly.length} do mês` : '',
+  ].filter(Boolean).join(' · ')
 
   if (isError) return <ErrorState onRetry={refetch} />
   if (isLoading) return <PageLoader />
 
   return (
     <div>
-      <PageHeader title="Rotina" subtitle={todays.length ? `${doneCount} de ${todays.length} hábitos de hoje` : 'Seus hábitos e rotinas'}
+      <PageHeader title="Rotina" subtitle={subtitle || 'Seus hábitos e rotinas'}
         action={<Button onClick={() => openHabit(null)}><Plus />Novo hábito</Button>} />
       {active.length === 0 ? (
-        <Card><EmptyState icon={<Repeat />} title="Comece com um hábito pequeno" text="Beber água, alongar, ler algumas páginas. Constância vem de passos leves."
+        <Card><EmptyState icon={<Repeat />} title="Comece com um hábito pequeno" text="Beber água todo dia, academia 3 vezes por semana, faxina 1 vez por mês. Constância vem de passos leves."
           action={<Button onClick={() => openHabit(null)}><Plus />Criar hábito</Button>} /></Card>
       ) : (
         <>
@@ -120,7 +130,19 @@ export function HabitsPage() {
                   </Card>
                 )
               })}
-              {todays.length === 0 && <Card className="md:col-span-2"><p className="text-sm text-muted-foreground">Hoje é dia de descanso para seus hábitos. Aproveite.</p></Card>}
+              {todays.length === 0 && weekly.length + monthly.length === 0 && <Card className="md:col-span-2"><p className="text-sm text-muted-foreground">Hoje é dia de descanso para seus hábitos. Aproveite.</p></Card>}
+              {weekly.length > 0 && (
+                <Card>
+                  <CardHeader title="Nesta semana" icon={<CalendarRange />} />
+                  <div className="-mx-2">{weekly.map((h) => <HabitRow key={h.id} habit={h} onOpen={() => openHabit(h)} />)}</div>
+                </Card>
+              )}
+              {monthly.length > 0 && (
+                <Card>
+                  <CardHeader title="Neste mês" icon={<CalendarDays />} />
+                  <div className="-mx-2">{monthly.map((h) => <HabitRow key={h.id} habit={h} onOpen={() => openHabit(h)} />)}</div>
+                </Card>
+              )}
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{active.map((h) => <HabitStats key={h.id} habit={h} />)}</div>

@@ -14,6 +14,10 @@ const ORDER: Record<TableName, string> = {
   recurring_transactions: 'start_date',
   budgets: 'month',
   savings_goals: 'created_at',
+  workout_plans: 'position',
+  workout_sessions: 'performed_on',
+  meals: 'time',
+  meal_logs: 'log_date',
 }
 
 /** Mensagens amigáveis, sem expor detalhes (e sem registrar dados pessoais). */

@@ -1,4 +1,4 @@
-import { CalendarPlus, CheckSquare, Repeat, Smile, Wallet } from 'lucide-react'
+import { CalendarPlus, CheckSquare, Dumbbell, Repeat, Salad, Smile, Wallet } from 'lucide-react'
 import { Sheet } from '@/components/ui/dialog'
 import { useEditors } from '@/features/shared/editors'
 import { useProfile } from '@/hooks/useData'
@@ -12,6 +12,8 @@ export function QuickAdd({ open, onOpenChange }: { open: boolean; onOpenChange: 
     { label: 'Compromisso', icon: CalendarPlus, color: 'bg-lavender/30 text-[#5b4f8a] dark:text-lavender', run: () => ed.openEvent(), show: enabled.includes('agenda') },
     { label: 'Despesa', icon: Wallet, color: 'bg-[#A9C4D8]/30 text-[#3f5f78] dark:text-[#A9C4D8]', run: () => ed.openTransaction(null, { kind: 'expense' }), show: enabled.includes('finance') },
     { label: 'Hábito', icon: Repeat, color: 'bg-sage/30 text-[#4b664b] dark:text-sage', run: () => ed.openHabit(), show: enabled.includes('habits') },
+    { label: 'Treino', icon: Dumbbell, color: 'bg-rose/25 text-[#8a4f5a] dark:text-rose', run: () => ed.openWorkout(), show: enabled.includes('workout') },
+    { label: 'Refeição', icon: Salad, color: 'bg-sage/30 text-[#4b664b] dark:text-sage', run: () => ed.openMealLog(), show: enabled.includes('food') },
     { label: 'Como estou', icon: Smile, color: 'bg-[#E1C49B]/30 text-[#7a5a2c] dark:text-[#E1C49B]', run: () => ed.openMood(), show: true },
   ].filter((i) => i.show)
 

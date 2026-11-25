@@ -7,6 +7,7 @@ import { Sheet } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Confirm } from '@/components/ui/confirm'
+import { Segmented } from '@/components/ui/misc'
 import { useTableMutations } from '@/hooks/useData'
 import { HABIT_ICONS } from '@/lib/habitIcons'
 import { COLOR_OPTIONS } from '@/lib/colors'
@@ -16,25 +17,29 @@ import type { Habit } from '@/data/types'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'Dê um nome ao hábito').max(80),
+  frequency: z.enum(['daily', 'weekly', 'monthly']),
+  target_per_period: z.coerce.number().int().min(1, 'Mínimo 1').max(31, 'Máximo 31'),
   icon: z.string(),
   color: z.string(),
   days_of_week: z.array(z.number()).min(1, 'Escolha pelo menos um dia'),
   target_per_day: z.coerce.number().int().min(1, 'Mínimo 1').max(50, 'Máximo 50'),
   unit: z.string().max(20).optional(),
   period: z.enum(['morning', 'afternoon', 'evening', 'anytime']),
-})
+}).refine((v) => v.frequency !== 'weekly' || v.target_per_period <= 7, { path: ['target_per_period'], message: 'Uma semana tem 7 dias' })
 type FormIn = z.input<typeof schema>
 type FormOut = z.output<typeof schema>
 
 export const HABIT_SUGGESTIONS: Partial<Habit>[] = [
   { name: 'Beber água', icon: 'glass-water', color: 'sky', target_per_day: 8, unit: 'copos' },
-  { name: 'Praticar exercícios', icon: 'dumbbell', color: 'sage', days_of_week: [1, 3, 5] },
+  { name: 'Academia', icon: 'dumbbell', color: 'sage', frequency: 'weekly', target_per_period: 3 },
   { name: 'Ler', icon: 'book-open', color: 'lavender', period: 'evening' },
   { name: 'Estudar', icon: 'pen-line', color: 'sand' },
   { name: 'Meditar', icon: 'brain', color: 'mint', period: 'morning' },
   { name: 'Dormir melhor', icon: 'bed-double', color: 'lavender', period: 'evening' },
   { name: 'Cuidar da pele', icon: 'sparkles', color: 'rose', period: 'evening' },
-  { name: 'Organizar a casa', icon: 'home', color: 'sage' },
+  { name: 'Trocar roupa de cama', icon: 'bed-double', color: 'sky', frequency: 'weekly', target_per_period: 1 },
+  { name: 'Faxina pesada', icon: 'home', color: 'sage', frequency: 'monthly', target_per_period: 1 },
+  { name: 'Revisar as finanças', icon: 'pen-line', color: 'sand', frequency: 'monthly', target_per_period: 1 },
 ]
 
 export function HabitForm({ open, onOpenChange, habit, defaults }: {
@@ -42,19 +47,27 @@ export function HabitForm({ open, onOpenChange, habit, defaults }: {
 }) {
   const { create, update, remove } = useTableMutations('habits')
   const [saving, setSaving] = useState(false)
-  const { register, handleSubmit, reset, control, setValue, formState: { errors } } = useForm<FormIn, unknown, FormOut>({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, reset, control, setValue, watch, formState: { errors } } = useForm<FormIn, unknown, FormOut>({ resolver: zodResolver(schema) })
 
   const fill = (h: Partial<Habit>) => reset({
-    name: h.name ?? '', icon: h.icon ?? 'sparkles', color: h.color ?? 'sage',
+    name: h.name ?? '', frequency: h.frequency ?? 'daily', target_per_period: h.target_per_period ?? 1, icon: h.icon ?? 'sparkles', color: h.color ?? 'sage',
     days_of_week: h.days_of_week ?? [0, 1, 2, 3, 4, 5, 6], target_per_day: h.target_per_day ?? 1,
     unit: h.unit ?? '', period: h.period ?? 'anytime',
   })
   useEffect(() => { if (open) fill(habit ?? defaults ?? {}) // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, habit?.id])
 
+  const freq = watch('frequency') ?? 'daily'
+
   const onSubmit = async (v: FormOut) => {
     setSaving(true)
-    const row = { ...v, unit: v.unit?.trim() || null, days_of_week: [...v.days_of_week].sort() }
+    const daily = v.frequency === 'daily'
+    const row = {
+      ...v, unit: v.unit?.trim() || null, days_of_week: [...v.days_of_week].sort(),
+      // semanais/mensais: um registro por dia; os dias da semana ficam livres
+      target_per_day: daily ? v.target_per_day : 1,
+      target_per_period: daily ? 1 : v.target_per_period,
+    }
     try {
       if (habit) await update.mutateAsync({ id: habit.id, patch: row, success: 'Hábito atualizado.' })
       else await create.mutateAsync({ row, success: 'Hábito criado! Um passo de cada vez.' })
@@ -90,6 +103,20 @@ export function HabitForm({ open, onOpenChange, habit, defaults }: {
         )}
         <Field label="Nome" error={errors.name?.message}>{(p) => <Input {...p} {...register('name')} placeholder="Ex.: Beber água" />}</Field>
 
+        <Controller control={control} name="frequency" render={({ field }) => (
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium text-foreground/85">Frequência</legend>
+            <Segmented className="w-full" label="Frequência" value={field.value} onChange={field.onChange}
+              options={[{ value: 'daily', label: 'Diário' }, { value: 'weekly', label: 'Semanal' }, { value: 'monthly', label: 'Mensal' }]} />
+          </fieldset>
+        )} />
+        {freq !== 'daily' && (
+          <Field label={freq === 'weekly' ? 'Quantas vezes por semana?' : 'Quantas vezes por mês?'} error={errors.target_per_period?.message}
+            hint="Você marca no dia em que fizer. Qualquer dia vale.">
+            {(p) => <Input type="number" min={1} max={freq === 'weekly' ? 7 : 31} inputMode="numeric" {...p} {...register('target_per_period')} />}
+          </Field>
+        )}
+
         <Controller control={control} name="icon" render={({ field }) => (
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-foreground/85">Ícone</legend>
@@ -116,7 +143,7 @@ export function HabitForm({ open, onOpenChange, habit, defaults }: {
           </fieldset>
         )} />
 
-        <Controller control={control} name="days_of_week" render={({ field }) => (
+        {freq === 'daily' && <Controller control={control} name="days_of_week" render={({ field }) => (
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-foreground/85">Dias</legend>
             <div className="flex gap-1.5">
@@ -136,9 +163,10 @@ export function HabitForm({ open, onOpenChange, habit, defaults }: {
             </div>
             {errors.days_of_week && <p className="mt-1 text-xs text-danger" role="alert">{errors.days_of_week.message}</p>}
           </fieldset>
-        )} />
+        )} />}
 
         <div className="grid grid-cols-2 gap-3">
+          {freq === 'daily' && <>
           <Field label="Meta por dia" error={errors.target_per_day?.message}>{(p) => <Input type="number" min={1} max={50} inputMode="numeric" {...p} {...register('target_per_day')} />}</Field>
           <Field label="Unidade" hint="Opcional: copos, páginas…">{(p) => <Input {...p} {...register('unit')} />}</Field>
           <Field label="Momento do dia" className="col-span-2">{(p) => (
@@ -147,6 +175,7 @@ export function HabitForm({ open, onOpenChange, habit, defaults }: {
               <option value="evening">Noite</option><option value="anytime">Ao longo do dia</option>
             </Select>)}
           </Field>
+          </>}
         </div>
       </form>
     </Sheet>

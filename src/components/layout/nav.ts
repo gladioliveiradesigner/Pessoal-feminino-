@@ -1,4 +1,4 @@
-import { CalendarDays, CheckSquare, Compass, Home, Repeat, UserRound, Wallet, type LucideIcon } from 'lucide-react'
+import { CalendarDays, CheckSquare, Compass, Dumbbell, Home, Repeat, Salad, UserRound, Wallet, type LucideIcon } from 'lucide-react'
 
 export interface NavItem { to: string; label: string; icon: LucideIcon; module?: string }
 
@@ -8,6 +8,8 @@ export const MAIN_NAV: NavItem[] = [
   { to: '/tarefas', label: 'Tarefas', icon: CheckSquare, module: 'tasks' },
   { to: '/rotina', label: 'Rotina', icon: Repeat, module: 'habits' },
   { to: '/financas', label: 'Finanças', icon: Wallet, module: 'finance' },
+  { to: '/treinos', label: 'Treinos', icon: Dumbbell, module: 'workout' },
+  { to: '/alimentacao', label: 'Alimentação', icon: Salad, module: 'food' },
   { to: '/explorar', label: 'Explorar', icon: Compass },
   { to: '/perfil', label: 'Perfil', icon: UserRound },
 ]
