@@ -32,11 +32,11 @@ export function EmptyState({ icon, title, text, action, className }: { icon: Rea
   )
 }
 
-export function ErrorState({ onRetry }: { onRetry?: () => void }) {
+export function ErrorState({ onRetry, detail }: { onRetry?: () => void; detail?: string }) {
   return (
     <div role="alert" className="rounded-2xl border border-danger/30 bg-danger/5 p-5 text-sm">
       <p className="font-medium">Não conseguimos carregar seus dados.</p>
-      <p className="mt-1 text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+      <p className="mt-1 text-muted-foreground">{detail ?? 'Verifique sua conexão e tente novamente.'}</p>
       {onRetry && <button onClick={onRetry} className="mt-3 font-semibold text-primary underline-offset-4 hover:underline">Tentar de novo</button>}
     </div>
   )

@@ -25,7 +25,8 @@ function fail(error: { message: string; code?: string } | null): never {
   const msg = error?.message ?? ''
   if (/JWT|auth/i.test(msg)) throw new Error('Sua sessão expirou. Entre novamente.')
   if (/Failed to fetch|NetworkError/i.test(msg)) throw new Error('Sem conexão. Verifique sua internet e tente de novo.')
-  throw new Error('Não foi possível salvar agora. Tente novamente.')
+  if (error?.code === '42501') throw new Error('O banco recusou o acesso (permissão). Fale com o suporte do app.')
+  throw new Error(`Não foi possível concluir agora. Tente novamente.${error?.code ? ` (código ${error.code})` : ''}`)
 }
 
 export function createSupabaseSource(sb: SupabaseClient, userId: string): DataSource {

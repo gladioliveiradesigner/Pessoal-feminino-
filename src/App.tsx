@@ -27,7 +27,7 @@ function Protected({ children, onboarding }: { children: ReactNode; onboarding?:
   if (status === 'loading') return <PageLoader />
   if (status === 'signed-out') return <Navigate to="/entrar" replace state={{ from: loc.pathname }} />
   if (profile.isLoading) return <PageLoader />
-  if (profile.isError) return <div className="p-6"><ErrorState onRetry={() => profile.refetch()} /></div>
+  if (profile.isError) return <div className="p-6"><ErrorState onRetry={() => profile.refetch()} detail={profile.error instanceof Error ? profile.error.message : undefined} /></div>
   const done = !!profile.data?.onboarded_at
   if (!onboarding && !done) return <Navigate to="/onboarding" replace />
   if (onboarding && done) return <Navigate to="/" replace />
