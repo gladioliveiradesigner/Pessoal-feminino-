@@ -1,19 +1,19 @@
-import { CalendarDays, CheckSquare, Compass, Dumbbell, Home, Repeat, Salad, UserRound, Wallet, type LucideIcon } from 'lucide-react'
+import { LayoutGrid, type LucideIcon } from 'lucide-react'
+import { coreModules, type CoreDef } from '@/lib/cores'
 
-export interface NavItem { to: string; label: string; icon: LucideIcon; module?: string }
+export interface NavItem { to: string; label: string; icon: LucideIcon }
 
-export const MAIN_NAV: NavItem[] = [
-  { to: '/', label: 'Início', icon: Home },
-  { to: '/agenda', label: 'Agenda', icon: CalendarDays, module: 'agenda' },
-  { to: '/tarefas', label: 'Tarefas', icon: CheckSquare, module: 'tasks' },
-  { to: '/rotina', label: 'Rotina', icon: Repeat, module: 'habits' },
-  { to: '/financas', label: 'Finanças', icon: Wallet, module: 'finance' },
-  { to: '/treinos', label: 'Treinos', icon: Dumbbell, module: 'workout' },
-  { to: '/alimentacao', label: 'Alimentação', icon: Salad, module: 'food' },
-  { to: '/explorar', label: 'Explorar', icon: Compass },
-  { to: '/perfil', label: 'Perfil', icon: UserRound },
-]
+/** Nomes curtos dos módulos para abas e menu. */
+const SHORT_LABEL: Record<string, string> = {
+  agenda: 'Agenda', tasks: 'Tarefas', habits: 'Rotina', finance: 'Finanças', workout: 'Treinos', food: 'Alimentação',
+}
 
-export function visibleNav(enabled: string[] | undefined) {
-  return MAIN_NAV.filter((n) => !n.module || (enabled ?? []).includes(n.module))
+/** Abas de um núcleo: visão geral + módulos ativos. Núcleos de um módulo só não têm abas. */
+export function coreTabs(core: CoreDef, enabled: string[] | undefined): NavItem[] {
+  if (core.modules.length <= 1) return []
+  const { active } = coreModules(core, enabled)
+  return [
+    { to: core.path, label: 'Visão geral', icon: LayoutGrid },
+    ...active.map((m) => ({ to: m.path!, label: SHORT_LABEL[m.id] ?? m.label, icon: m.icon })),
+  ]
 }
