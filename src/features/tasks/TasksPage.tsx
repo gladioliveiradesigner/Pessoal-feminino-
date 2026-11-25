@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { CheckSquare, Plus, Search, Tags } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,8 +26,9 @@ export function TasksPage() {
   const { data: tasks, isLoading, isError, refetch } = useTable('tasks')
   const { data: cats = [] } = useTable('categories')
   const { openTask } = useEditors()
-  const [filter, setFilter] = useState<TaskFilter>('today')
-  const [cat, setCat] = useState<string | null>(null)
+  const [params] = useSearchParams()
+  const [filter, setFilter] = useState<TaskFilter>(() => (params.get('categoria') ? 'all' : 'today'))
+  const [cat, setCat] = useState<string | null>(() => params.get('categoria'))
   const [q, setQ] = useState('')
   const [manage, setManage] = useState(false)
 

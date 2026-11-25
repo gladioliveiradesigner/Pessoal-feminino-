@@ -16,6 +16,7 @@ const HabitsPage = lazy(() => import('@/features/habits/HabitsPage').then((m) =>
 const FinancePage = lazy(() => import('@/features/finance/FinancePage').then((m) => ({ default: m.FinancePage })))
 const WorkoutPage = lazy(() => import('@/features/workout/WorkoutPage').then((m) => ({ default: m.WorkoutPage })))
 const FoodPage = lazy(() => import('@/features/food/FoodPage').then((m) => ({ default: m.FoodPage })))
+const CorePage = lazy(() => import('@/features/cores/CorePage').then((m) => ({ default: m.CorePage })))
 const ExplorePage = lazy(() => import('@/features/explore/ExplorePage').then((m) => ({ default: m.ExplorePage })))
 const ProfilePage = lazy(() => import('@/features/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })))
 
@@ -59,6 +60,10 @@ export default function App() {
             <Route path="financas" element={<FinancePage />} />
             <Route path="treinos" element={<WorkoutPage />} />
             <Route path="alimentacao" element={<FoodPage />} />
+            <Route path="pessoal" element={<CorePage key="pessoal" id="pessoal" />} />
+            <Route path="saude" element={<CorePage key="saude" id="saude" />} />
+            <Route path="trabalho" element={<CorePage key="trabalho" id="trabalho" />} />
+            <Route path="estudo" element={<CorePage key="estudo" id="estudo" />} />
             <Route path="explorar" element={<ExplorePage />} />
             <Route path="perfil" element={<ProfilePage />} />
           </Route>

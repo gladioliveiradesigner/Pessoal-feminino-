@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { addDays, addMonths, addWeeks, eachDayOfInterval, endOfMonth, endOfWeek, isSameDay, isSameMonth, isToday, startOfDay, startOfMonth, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns'
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Plus, Repeat, Bell } from 'lucide-react'
@@ -237,7 +238,8 @@ export function AgendaPage() {
   const weekStartsOn = profile?.week_starts_on ?? 0
   const [view, setViewState] = useState<View>(readView)
   const [cursor, setCursor] = useState(() => startOfDay(new Date()))
-  const [filter, setFilter] = useState<string[]>([])
+  const [params] = useSearchParams()
+  const [filter, setFilter] = useState<string[]>(() => { const c = params.get('categoria'); return c ? [c] : [] })
   const [showTasks, setShowTasks] = useState(true)
   const setView = (v: View) => { setViewState(v); try { localStorage.setItem('lume-agenda-view', v) } catch { /* ignore */ } }
 
