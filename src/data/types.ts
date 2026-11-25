@@ -5,7 +5,7 @@ export type ThemePref = 'light' | 'dark' | 'system'
 export type Accent = 'rose' | 'lavender' | 'sage' | 'graphite'
 
 export interface WidgetPref { id: WidgetId; visible: boolean }
-export type WidgetId = 'tasks' | 'events' | 'habits' | 'finance' | 'mood' | 'reminders'
+export type WidgetId = 'tasks' | 'events' | 'habits' | 'finance' | 'workout' | 'food' | 'mood' | 'reminders'
 
 export interface Profile {
   id: string
@@ -64,8 +64,13 @@ export interface Task extends Owned {
   position: number
 }
 
+export type HabitFrequency = 'daily' | 'weekly' | 'monthly'
+
 export interface Habit extends Owned {
   name: string
+  /** daily: usa days_of_week e target_per_day. weekly/monthly: X vezes por semana/mês (target_per_period). */
+  frequency: HabitFrequency
+  target_per_period: number
   icon: string
   color: string
   days_of_week: number[]
@@ -149,6 +154,68 @@ export interface SavingsGoal extends Owned {
   achieved_at: string | null
 }
 
+// ---------------- Treinos ----------------
+export interface WorkoutExercise {
+  id: string
+  name: string
+  sets: number
+  reps: string
+  weight_kg: number | null
+  rest_seconds: number | null
+  notes: string | null
+}
+
+export interface WorkoutPlan extends Owned {
+  name: string
+  color: string
+  days_of_week: number[]
+  notes: string | null
+  exercises: WorkoutExercise[]
+  archived_at: string | null
+  position: number
+}
+
+export interface WorkoutEntry {
+  exercise_id: string | null
+  name: string
+  sets: number
+  reps: string
+  weight_kg: number | null
+  done: boolean
+}
+
+export interface WorkoutSession extends Owned {
+  plan_id: string | null
+  name: string
+  performed_on: string
+  duration_min: number | null
+  /** Como foi: 1 (leve) a 5 (puxado). */
+  effort: number | null
+  notes: string | null
+  entries: WorkoutEntry[]
+}
+
+// ---------------- Alimentação ----------------
+export interface Meal extends Owned {
+  name: string
+  time: string | null
+  planned: string | null
+  days_of_week: number[]
+  position: number
+}
+
+export type MealStatus = 'as_planned' | 'different' | 'skipped'
+
+export interface MealLog extends Owned {
+  log_date: string
+  meal_id: string | null
+  name: string
+  status: MealStatus
+  description: string | null
+  time: string | null
+  notes: string | null
+}
+
 /** Mapeamento tabela → tipo de linha. Novas tabelas (finanças, metas...) entram aqui. */
 export interface Tables {
   categories: Category
@@ -163,11 +230,16 @@ export interface Tables {
   recurring_transactions: RecurringTransaction
   budgets: Budget
   savings_goals: SavingsGoal
+  workout_plans: WorkoutPlan
+  workout_sessions: WorkoutSession
+  meals: Meal
+  meal_logs: MealLog
 }
 
 export const ALL_TABLES: TableName[] = [
   'categories', 'events', 'tasks', 'habits', 'habit_logs', 'mood_entries',
   'payment_methods', 'finance_categories', 'transactions', 'recurring_transactions', 'budgets', 'savings_goals',
+  'workout_plans', 'workout_sessions', 'meals', 'meal_logs',
 ]
 export type TableName = keyof Tables
 
@@ -196,6 +268,8 @@ export const DEFAULT_WIDGETS: WidgetPref[] = [
   { id: 'events', visible: true },
   { id: 'habits', visible: true },
   { id: 'finance', visible: true },
+  { id: 'workout', visible: true },
+  { id: 'food', visible: true },
   { id: 'mood', visible: true },
   { id: 'reminders', visible: true },
 ]

@@ -32,6 +32,15 @@
 | `budgets` | orçamento do mês, total (`category_id` nulo) ou por categoria |
 | `savings_goals` | metas de economia com valor guardado e prazo |
 
+### Treinos, alimentação e hábitos semanais/mensais (Fase 2)
+| Tabela | Conteúdo |
+| --- | --- |
+| `habits` (+colunas) | `frequency` (`daily`/`weekly`/`monthly`) e `target_per_period` (X vezes por semana/mês). Semanais e mensais aparecem todo dia e contam um registro por dia. |
+| `workout_plans` | fichas de treino; exercícios em `jsonb` (séries, repetições, carga em kg) e dias sugeridos |
+| `workout_sessions` | treinos feitos, com exercícios marcados, cargas usadas, duração e esforço (1 a 5); alimenta o gráfico de evolução |
+| `meals` | plano de refeições (nome, horário, o que planeja comer, dias da semana) |
+| `meal_logs` | registro do dia: como planejado, comeu outra coisa ou pulou; `meal_id` nulo = fora do plano. Sem calorias, de propósito. |
+
 Gatilho `assert_same_owner` impede referenciar categoria, tarefa-mãe ou hábito de outra pessoa.
 
 ## Privacidade e LGPD
@@ -45,5 +54,5 @@ Gatilho `assert_same_owner` impede referenciar categoria, tarefa-mãe ou hábito
 - Tarefas: ao concluir uma tarefa recorrente, a próxima é criada com a nova data (e as subtarefas são copiadas em aberto).
 
 ## Roadmap
-- **Fase 2:** ~~Finanças~~ (pronto), Metas, Diário, Casa, Treino e academia, Filhos, Pets.
+- **Fase 2:** ~~Finanças~~, ~~Treino e academia~~, ~~Rotina alimentar~~ (prontos), Metas, Diário, Casa, Filhos, Pets.
 - **Fase 3:** Bem-estar (humor, sono, autocuidado), Ciclo menstrual, Remédios, Skin care, notificações push, offline avançado.

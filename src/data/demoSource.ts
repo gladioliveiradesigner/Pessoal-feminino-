@@ -13,7 +13,7 @@ const DEFAULTS: { [K in TableName]: Partial<Tables[K]> } = {
   categories: { color: 'rose', position: 0 },
   events: { description: null, location: null, all_day: false, category_id: null, recurrence_freq: null, recurrence_interval: 1, recurrence_until: null, reminder_minutes: [] },
   tasks: { parent_id: null, notes: null, priority: 'medium', due_date: null, due_time: null, category_id: null, tags: [], recurrence_freq: null, recurrence_interval: 1, completed_at: null, position: 0 },
-  habits: { icon: 'sparkles', color: 'sage', days_of_week: [0, 1, 2, 3, 4, 5, 6], target_per_day: 1, unit: null, period: 'anytime', archived_at: null, position: 0 },
+  habits: { frequency: 'daily', target_per_period: 1, icon: 'sparkles', color: 'sage', days_of_week: [0, 1, 2, 3, 4, 5, 6], target_per_day: 1, unit: null, period: 'anytime', archived_at: null, position: 0 },
   habit_logs: { count: 1 },
   mood_entries: { energy: null, note: null },
   payment_methods: { kind: 'other', archived_at: null, position: 0 },
@@ -22,6 +22,56 @@ const DEFAULTS: { [K in TableName]: Partial<Tables[K]> } = {
   recurring_transactions: { category_id: null, payment_method_id: null, freq: 'monthly', interval_count: 1, end_date: null, active: true },
   budgets: { category_id: null },
   savings_goals: { saved_cents: 0, deadline: null, color: 'sage', achieved_at: null },
+  workout_plans: { color: 'rose', days_of_week: [], notes: null, exercises: [], archived_at: null, position: 0 },
+  workout_sessions: { plan_id: null, duration_min: null, effort: null, notes: null, entries: [] },
+  meals: { time: null, planned: null, days_of_week: [0, 1, 2, 3, 4, 5, 6], position: 0 },
+  meal_logs: { meal_id: null, status: 'different', description: null, time: null, notes: null },
+}
+
+function seedWorkout(today: Date) {
+  const ex = (name: string, sets: number, reps: string, weight_kg: number | null) => ({ id: uid(), name, sets, reps, weight_kg, rest_seconds: null, notes: null })
+  const a: Tables['workout_plans'] = { ...(DEFAULTS.workout_plans as Tables['workout_plans']), id: uid(), name: 'Treino A · Inferiores', color: 'rose', days_of_week: [1, 4], position: 0,
+    exercises: [ex('Agachamento livre', 4, '10', 30), ex('Leg press', 3, '12', 90), ex('Cadeira extensora', 3, '12', 35), ex('Elevação pélvica', 4, '10', 50)] }
+  const b: Tables['workout_plans'] = { ...(DEFAULTS.workout_plans as Tables['workout_plans']), id: uid(), name: 'Treino B · Superiores', color: 'lavender', days_of_week: [2, 5], position: 1,
+    exercises: [ex('Puxada frontal', 3, '12', 35), ex('Remada baixa', 3, '12', 30), ex('Desenvolvimento', 3, '10', 8), ex('Tríceps na polia', 3, '12', 15)] }
+  const workout_sessions: Tables['workout_sessions'][] = []
+  // seis semanas de histórico com progressão de carga
+  for (let w = 6; w >= 1; w--) {
+    for (const plan of [a, b]) {
+      for (const dow of plan.days_of_week) {
+        const d = addDays(today, -w * 7 + (dow - today.getDay()))
+        if (d >= today) continue
+        const bump = (6 - w) * (plan === a ? 2.5 : 1)
+        workout_sessions.push({ ...(DEFAULTS.workout_sessions as Tables['workout_sessions']), id: uid(), plan_id: plan.id, name: plan.name, performed_on: toDateKey(d), duration_min: 50 + (w % 3) * 5, effort: 3 + (w % 2),
+          entries: plan.exercises.map((e) => ({ exercise_id: e.id, name: e.name, sets: e.sets, reps: e.reps, weight_kg: e.weight_kg === null ? null : Math.max(2, e.weight_kg - 15 + bump), done: true })) })
+      }
+    }
+  }
+  workout_sessions.push({ ...(DEFAULTS.workout_sessions as Tables['workout_sessions']), id: uid(), name: 'Caminhada no parque', performed_on: toDateKey(addDays(today, -2)), duration_min: 40, effort: 2 })
+  return { workout_plans: [a, b], workout_sessions }
+}
+
+function seedFood(today: Date) {
+  const m = (name: string, time: string, planned: string, position: number) => ({ ...(DEFAULTS.meals as Tables['meals']), id: uid(), name, time, planned, position })
+  const meals = [
+    m('Café da manhã', '07:30', 'Pão integral com ovo mexido, 1 fruta e café', 0),
+    m('Lanche da manhã', '10:00', 'Iogurte natural com granola', 1),
+    m('Almoço', '12:30', 'Arroz, feijão, proteína e salada colorida', 2),
+    m('Lanche da tarde', '16:00', 'Fruta e castanhas', 3),
+    m('Jantar', '19:30', 'Omelete com legumes ou sopa', 4),
+  ]
+  const meal_logs: Tables['meal_logs'][] = []
+  for (let d = 0; d <= 6; d++) {
+    const key = toDateKey(addDays(today, -d))
+    meals.forEach((meal, i) => {
+      if (d === 0 && i > 1) return
+      const status = (d + i) % 5 === 0 ? 'different' : (d + i) % 7 === 3 ? 'skipped' : 'as_planned'
+      meal_logs.push({ ...(DEFAULTS.meal_logs as Tables['meal_logs']), id: uid(), log_date: key, meal_id: meal.id, name: meal.name, status,
+        description: status === 'as_planned' ? meal.planned : status === 'different' ? 'Comi fora: sanduíche natural' : null })
+    })
+  }
+  meal_logs.push({ ...(DEFAULTS.meal_logs as Tables['meal_logs']), id: uid(), log_date: toDateKey(addDays(today, -1)), name: 'Brigadeiro no aniversário', time: '15:00', description: 'Dois docinhos 🎉' })
+  return { meals, meal_logs }
 }
 
 function seedFinance(today: Date) {
@@ -115,16 +165,23 @@ function seed() {
     hb('Ler 20 minutos', 'book-open', 'lavender', 'evening'),
     hb('Cuidar da pele', 'sparkles', 'rose', 'evening'),
     hb('Caminhada', 'footprints', 'mint', 'afternoon', { days_of_week: [1, 3, 5] }),
+    hb('Academia', 'dumbbell', 'rose', 'anytime', { frequency: 'weekly', target_per_period: 3 }),
+    hb('Faxina pesada', 'home', 'sage', 'anytime', { frequency: 'monthly', target_per_period: 1 }),
   ]
   const habit_logs: Tables['habit_logs'][] = []
   for (let d = 1; d <= 20; d++) {
     habits.forEach((h, i) => {
+      if (h.frequency !== 'daily') {
+        if ((h.frequency === 'weekly' && d % 2 === 1 && d < 14) || (h.frequency === 'monthly' && d === 12))
+          habit_logs.push({ id: uid(), habit_id: h.id, log_date: toDateKey(addDays(today, -d)), count: 1 })
+        return
+      }
       if ((d + i) % 4 !== 0 && h.days_of_week.includes(addDays(today, -d).getDay()))
         habit_logs.push({ id: uid(), habit_id: h.id, log_date: toDateKey(addDays(today, -d)), count: h.target_per_day })
     })
   }
   habit_logs.push({ id: uid(), habit_id: habits[0].id, log_date: toDateKey(today), count: 3 })
-  return { categories: cats, events, tasks, habits, habit_logs, mood_entries: [] as Tables['mood_entries'][], ...seedFinance(today) }
+  return { categories: cats, events, tasks, habits, habit_logs, mood_entries: [] as Tables['mood_entries'][], ...seedFinance(today), ...seedWorkout(today), ...seedFood(today) }
 }
 
 export function createDemoSource(): DataSource {
@@ -136,7 +193,7 @@ export function createDemoSource(): DataSource {
     areas: ['agenda', 'tasks', 'habits'],
     theme: 'system',
     accent: 'rose',
-    enabled_modules: ['agenda', 'tasks', 'habits', 'finance'],
+    enabled_modules: ['agenda', 'tasks', 'habits', 'finance', 'workout', 'food'],
     dashboard_widgets: DEFAULT_WIDGETS,
     week_starts_on: 0,
     onboarded_at: new Date().toISOString(),
@@ -171,6 +228,8 @@ export function createDemoSource(): DataSource {
         db.transactions = db.transactions.map((t) => (t.category_id === id ? { ...t, category_id: null } : t))
       }
       if (table === 'payment_methods') db.transactions = db.transactions.map((t) => (t.payment_method_id === id ? { ...t, payment_method_id: null } : t))
+      if (table === 'workout_plans') db.workout_sessions = db.workout_sessions.map((x) => (x.plan_id === id ? { ...x, plan_id: null } : x))
+      if (table === 'meals') db.meal_logs = db.meal_logs.map((x) => (x.meal_id === id ? { ...x, meal_id: null } : x))
       if (table === 'recurring_transactions') db.transactions = db.transactions.map((t) => (t.recurring_id === id ? { ...t, recurring_id: null } : t))
       if (table === 'categories') {
         db.tasks = db.tasks.map((t) => (t.category_id === id ? { ...t, category_id: null } : t))

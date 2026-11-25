@@ -14,6 +14,8 @@ const AgendaPage = lazy(() => import('@/features/agenda/AgendaPage').then((m) =>
 const TasksPage = lazy(() => import('@/features/tasks/TasksPage').then((m) => ({ default: m.TasksPage })))
 const HabitsPage = lazy(() => import('@/features/habits/HabitsPage').then((m) => ({ default: m.HabitsPage })))
 const FinancePage = lazy(() => import('@/features/finance/FinancePage').then((m) => ({ default: m.FinancePage })))
+const WorkoutPage = lazy(() => import('@/features/workout/WorkoutPage').then((m) => ({ default: m.WorkoutPage })))
+const FoodPage = lazy(() => import('@/features/food/FoodPage').then((m) => ({ default: m.FoodPage })))
 const ExplorePage = lazy(() => import('@/features/explore/ExplorePage').then((m) => ({ default: m.ExplorePage })))
 const ProfilePage = lazy(() => import('@/features/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })))
 
@@ -55,6 +57,8 @@ export default function App() {
             <Route path="tarefas" element={<TasksPage />} />
             <Route path="rotina" element={<HabitsPage />} />
             <Route path="financas" element={<FinancePage />} />
+            <Route path="treinos" element={<WorkoutPage />} />
+            <Route path="alimentacao" element={<FoodPage />} />
             <Route path="explorar" element={<ExplorePage />} />
             <Route path="perfil" element={<ProfilePage />} />
           </Route>
